@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ShoppingItem, Category } from "@/types";
 import { getItems, setItems } from "@/lib/storage";
+import { getSessionFromRequest } from "@/lib/getSession";
 import { randomUUID } from "crypto";
 
-export async function GET() {
-  return NextResponse.json(await getItems());
+export async function GET(req: NextRequest) {
+  const session = await getSessionFromRequest(req);
+  const groupId = session?.groupId || "default";
+  return NextResponse.json(await getItems(groupId));
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getSessionFromRequest(req);
+  const groupId = session?.groupId || "default";
   const { name, category, quantity, added_by_name } = await req.json();
-  const items = await getItems();
+  const items = await getItems(groupId);
 
   const newItem: ShoppingItem = {
     id: randomUUID(),
@@ -24,6 +29,6 @@ export async function POST(req: NextRequest) {
     updated_at: new Date().toISOString(),
   };
 
-  await setItems([...items, newItem]);
+  await setItems(groupId, [...items, newItem]);
   return NextResponse.json(newItem);
 }

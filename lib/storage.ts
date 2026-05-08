@@ -1,8 +1,7 @@
 import { ShoppingItem } from "@/types";
 
-const memoryItems: ShoppingItem[] = [];
-const memoryUsers: Record<string, { name: string; passwordHash: string }> = {};
-const memorySessions: Record<string, { username: string; name: string }> = {};
+// ── In-memory fallback ──────────────────────────────────────────
+const mem: Record<string, unknown> = {};
 
 type RedisClient = {
   get: (key: string) => Promise<unknown>;
@@ -19,44 +18,73 @@ function getRedis(): RedisClient | null {
   return null;
 }
 
-// Items
-export async function getItems(): Promise<ShoppingItem[]> {
+async function kvGet<T>(key: string): Promise<T | null> {
   const r = getRedis();
-  return r ? ((await r.get("shopping_items")) as ShoppingItem[] | null) || [] : [...memoryItems];
+  return r ? (await r.get(key)) as T | null : (mem[key] as T) ?? null;
 }
-export async function setItems(items: ShoppingItem[]): Promise<void> {
+async function kvSet(key: string, value: unknown, ex?: number): Promise<void> {
   const r = getRedis();
-  if (r) await r.set("shopping_items", items);
-  else { memoryItems.length = 0; memoryItems.push(...items); }
+  if (r) await r.set(key, value, ex ? { ex } : undefined);
+  else mem[key] = value;
+}
+async function kvDel(key: string): Promise<void> {
+  const r = getRedis();
+  if (r) await r.del(key);
+  else delete mem[key];
 }
 
-// Users
+// ── Items (per group) ───────────────────────────────────────────
+export async function getItems(groupId: string): Promise<ShoppingItem[]> {
+  return (await kvGet<ShoppingItem[]>(`items:${groupId}`)) || [];
+}
+export async function setItems(groupId: string, items: ShoppingItem[]): Promise<void> {
+  await kvSet(`items:${groupId}`, items);
+}
+
+// ── History (per group) ─────────────────────────────────────────
+interface HistoryEntry { id: string; date: string; total: number; itemCount: number; items: { name: string; quantity: number }[]; }
+export async function getHistory(groupId: string): Promise<HistoryEntry[]> {
+  return (await kvGet<HistoryEntry[]>(`history:${groupId}`)) || [];
+}
+export async function addHistory(groupId: string, entry: HistoryEntry): Promise<void> {
+  const h = await getHistory(groupId);
+  h.push(entry);
+  await kvSet(`history:${groupId}`, h);
+}
+
+// ── Users ───────────────────────────────────────────────────────
 type UserRecord = Record<string, { name: string; passwordHash: string }>;
 export async function getUsers(): Promise<UserRecord> {
-  const r = getRedis();
-  return r ? ((await r.get("users")) as UserRecord | null) || {} : { ...memoryUsers };
+  return (await kvGet<UserRecord>("users")) || {};
 }
 export async function saveUser(username: string, data: { name: string; passwordHash: string }): Promise<void> {
   const users = await getUsers();
   users[username] = data;
-  const r = getRedis();
-  if (r) await r.set("users", users);
-  else memoryUsers[username] = data;
+  await kvSet("users", users);
 }
 
-// Sessions
-type SessionData = { username: string; name: string };
+// ── Sessions ────────────────────────────────────────────────────
+export type SessionData = { username: string; name: string; groupId?: string };
 export async function saveSession(token: string, data: SessionData): Promise<void> {
-  const r = getRedis();
-  if (r) await r.set(`session:${token}`, data, { ex: 60 * 60 * 24 * 30 });
-  else memorySessions[token] = data;
+  await kvSet(`session:${token}`, data, 60 * 60 * 24 * 30);
 }
 export async function getSession(token: string): Promise<SessionData | null> {
-  const r = getRedis();
-  return r ? ((await r.get(`session:${token}`)) as SessionData | null) : memorySessions[token] || null;
+  return kvGet<SessionData>(`session:${token}`);
 }
 export async function deleteSession(token: string): Promise<void> {
-  const r = getRedis();
-  if (r) await r.del(`session:${token}`);
-  else delete memorySessions[token];
+  await kvDel(`session:${token}`);
+}
+
+// ── Groups ──────────────────────────────────────────────────────
+export interface GroupData { id: string; name: string; inviteCode: string; createdBy: string; }
+export async function saveGroup(group: GroupData): Promise<void> {
+  await kvSet(`group:${group.id}`, group);
+  await kvSet(`group:code:${group.inviteCode}`, group.id);
+}
+export async function getGroupById(id: string): Promise<GroupData | null> {
+  return kvGet<GroupData>(`group:${id}`);
+}
+export async function getGroupByCode(code: string): Promise<GroupData | null> {
+  const id = await kvGet<string>(`group:code:${code.toUpperCase()}`);
+  return id ? getGroupById(id) : null;
 }

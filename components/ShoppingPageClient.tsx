@@ -9,6 +9,7 @@ import {
 import AddItemModal from "./AddItemModal";
 import AISuggestions from "./AISuggestions";
 import AuthScreen from "./AuthScreen";
+import GroupSetupScreen from "./GroupSetupScreen";
 import PasteListModal from "./PasteListModal";
 import { getProductEmoji } from "@/lib/productEmoji";
 
@@ -27,6 +28,9 @@ const CATEGORY_ORDER: Category[] = ["vegetables_fruits", "dairy", "meat", "dry_g
 export default function ShoppingPageClient() {
   const [token, setToken] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<AppMode>("list");
@@ -41,26 +45,39 @@ export default function ShoppingPageClient() {
   useEffect(() => {
     const t = localStorage.getItem("auth_token");
     const n = localStorage.getItem("auth_name");
+    const g = localStorage.getItem("group_id");
+    const gn = localStorage.getItem("group_name");
+    const ic = localStorage.getItem("invite_code");
     if (t && n) { setToken(t); setUserName(n); }
+    if (g && gn) { setGroupId(g); setGroupName(gn); setInviteCode(ic || ""); }
   }, []);
+
+  function handleGroupReady(gId: string, gName: string, ic: string) {
+    setGroupId(gId); setGroupName(gName); setInviteCode(ic);
+  }
+
+  const authHeaders = useCallback(() => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token || ""}`,
+  }), [token]);
 
   const fetchItems = useCallback(async () => {
-    const res = await fetch("/api/items");
+    const res = await fetch("/api/items", { headers: { Authorization: `Bearer ${token || ""}` } });
     if (res.ok) setItems(await res.json());
-  }, []);
+  }, [token]);
 
   const fetchHistory = useCallback(async () => {
-    const res = await fetch("/api/history");
+    const res = await fetch("/api/history", { headers: { Authorization: `Bearer ${token || ""}` } });
     if (res.ok) setHistory(await res.json());
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !groupId) return;
     fetchItems();
     fetchHistory();
     const interval = setInterval(fetchItems, 4000);
     return () => clearInterval(interval);
-  }, [token, fetchItems, fetchHistory]);
+  }, [token, groupId, fetchItems, fetchHistory]);
 
   function handleAuth(t: string, n: string) { setToken(t); setUserName(n); }
   function handleSignOut() {
@@ -70,22 +87,19 @@ export default function ShoppingPageClient() {
 
   async function handleDeleteItem(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
-    await fetch(`/api/items/${id}`, { method: "DELETE" });
+    await fetch(`/api/items/${id}`, { method: "DELETE", headers: authHeaders() });
   }
 
   async function handleUpdateQuantity(id: string, quantity: number) {
     if (quantity < 1) return;
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity } : i));
-    await fetch(`/api/items/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quantity }),
-    });
+    await fetch(`/api/items/${id}`, { method: "PATCH", headers: authHeaders(), body: JSON.stringify({ quantity }) });
   }
 
   async function handleAddItem(name: string, category: Category, quantity: number) {
     setLoading(true);
     const res = await fetch("/api/items", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({ name, category, quantity, added_by_name: userName }),
     });
     if (res.ok) { const newItem = await res.json(); setItems((prev) => [...prev, newItem]); }
@@ -105,21 +119,17 @@ export default function ShoppingPageClient() {
     setSaving(true);
     const total = parseFloat(totalInput) || 0;
     await fetch("/api/history", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({ items: items.map((i) => ({ name: i.name, quantity: i.quantity })), total }),
     });
-    // Delete all items
-    await Promise.all(items.map((i) => fetch(`/api/items/${i.id}`, { method: "DELETE" })));
-    setItems([]);
-    setCheckedIds(new Set());
-    setTotalInput("");
-    setMode("list");
+    await Promise.all(items.map((i) => fetch(`/api/items/${i.id}`, { method: "DELETE", headers: authHeaders() })));
+    setItems([]); setCheckedIds(new Set()); setTotalInput(""); setMode("list");
     await fetchHistory();
-    setSaving(false);
-    setShowHistory(true);
+    setSaving(false); setShowHistory(true);
   }
 
   if (!token) return <AuthScreen onAuth={handleAuth} />;
+  if (!groupId) return <GroupSetupScreen token={token} userName={userName} onGroupReady={handleGroupReady} />;
 
   const allDone = items.length > 0 && checkedIds.size === items.length;
 
@@ -134,8 +144,8 @@ export default function ShoppingPageClient() {
                 <ShoppingCart className="w-5 h-5 text-white" strokeWidth={1.5} />
               </div>
               <div>
-                <h1 className="text-gray-800 font-bold text-base leading-none">קניות הבית</h1>
-                <p className="text-gray-400 text-xs">שלום, {userName}</p>
+                <h1 className="text-gray-800 font-bold text-base leading-none">{groupName}</h1>
+                <p className="text-gray-400 text-xs">שלום, {userName} · קוד: <span className="font-bold text-purple-500">{inviteCode}</span></p>
               </div>
             </div>
             <div className="flex items-center gap-1">
