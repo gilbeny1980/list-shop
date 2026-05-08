@@ -1,16 +1,21 @@
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 import { ShoppingItem, Category } from "@/types";
 import { randomUUID } from "crypto";
 
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
 export async function GET() {
-  const items = (await kv.get<ShoppingItem[]>("shopping_items")) || [];
+  const items = (await redis.get<ShoppingItem[]>("shopping_items")) || [];
   return NextResponse.json(items);
 }
 
 export async function POST(req: NextRequest) {
   const { name, category, quantity, added_by_name } = await req.json();
-  const items = (await kv.get<ShoppingItem[]>("shopping_items")) || [];
+  const items = (await redis.get<ShoppingItem[]>("shopping_items")) || [];
 
   const newItem: ShoppingItem = {
     id: randomUUID(),
@@ -26,6 +31,6 @@ export async function POST(req: NextRequest) {
   };
 
   items.push(newItem);
-  await kv.set("shopping_items", items);
+  await redis.set("shopping_items", items);
   return NextResponse.json(newItem);
 }
