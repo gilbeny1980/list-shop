@@ -1,0 +1,10 @@
+runConfig:
+  concurrency: 10
+  maxInstances: 2
+  minInstances: 0
+
+env:
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY
+    availability:
+      - RUNTIME
