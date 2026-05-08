@@ -1,21 +1,15 @@
-import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 import { ShoppingItem, Category } from "@/types";
+import { getItems, setItems } from "@/lib/storage";
 import { randomUUID } from "crypto";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
 export async function GET() {
-  const items = (await redis.get<ShoppingItem[]>("shopping_items")) || [];
-  return NextResponse.json(items);
+  return NextResponse.json(await getItems());
 }
 
 export async function POST(req: NextRequest) {
   const { name, category, quantity, added_by_name } = await req.json();
-  const items = (await redis.get<ShoppingItem[]>("shopping_items")) || [];
+  const items = await getItems();
 
   const newItem: ShoppingItem = {
     id: randomUUID(),
@@ -30,7 +24,6 @@ export async function POST(req: NextRequest) {
     updated_at: new Date().toISOString(),
   };
 
-  items.push(newItem);
-  await redis.set("shopping_items", items);
+  await setItems([...items, newItem]);
   return NextResponse.json(newItem);
 }

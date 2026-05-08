@@ -2,27 +2,25 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ShoppingItem, Category, CATEGORY_CONFIG } from "@/types";
-import { ShoppingCart, Plus, RefreshCw } from "lucide-react";
-import CategorySection from "./CategorySection";
-import PaymentBasket from "./PaymentBasket";
+import { Plus, LogOut, ClipboardPaste, RefreshCw, ShoppingCart, Trash2, CheckCircle } from "lucide-react";
 import AddItemModal from "./AddItemModal";
 import AISuggestions from "./AISuggestions";
+import AuthScreen from "./AuthScreen";
+import PasteListModal from "./PasteListModal";
+import { getProductEmoji } from "@/lib/productEmoji";
 
 export default function ShoppingPageClient() {
+  const [token, setToken] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [userName, setUserName] = useState<string>("");
-  const [nameInput, setNameInput] = useState("");
-  const [showNameScreen, setShowNameScreen] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("shopping_user_name");
-    if (stored) {
-      setUserName(stored);
-    } else {
-      setShowNameScreen(true);
-    }
+    const t = localStorage.getItem("auth_token");
+    const n = localStorage.getItem("auth_name");
+    if (t && n) { setToken(t); setUserName(n); }
   }, []);
 
   const fetchItems = useCallback(async () => {
@@ -31,25 +29,26 @@ export default function ShoppingPageClient() {
   }, []);
 
   useEffect(() => {
+    if (!token) return;
     fetchItems();
-    const interval = setInterval(fetchItems, 3000);
+    const interval = setInterval(fetchItems, 4000);
     return () => clearInterval(interval);
-  }, [fetchItems]);
+  }, [token, fetchItems]);
 
-  function handleSaveName() {
-    const name = nameInput.trim();
-    if (!name) return;
-    localStorage.setItem("shopping_user_name", name);
-    setUserName(name);
-    setShowNameScreen(false);
+  function handleAuth(t: string, n: string) { setToken(t); setUserName(n); }
+
+  function handleSignOut() {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_name");
+    setToken(null);
+    setUserName("");
+    setItems([]);
   }
 
   async function handleCheckItem(item: ShoppingItem) {
     const newChecked = !item.is_checked;
     const newCategory: Category = newChecked ? "payment_basket" : item.category;
-    setItems((prev) =>
-      prev.map((i) => i.id === item.id ? { ...i, is_checked: newChecked, category: newCategory } : i)
-    );
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, is_checked: newChecked, category: newCategory } : i));
     await fetch(`/api/items/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -78,10 +77,7 @@ export default function ShoppingPageClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, category, quantity, added_by_name: userName }),
     });
-    if (res.ok) {
-      const newItem = await res.json();
-      setItems((prev) => [...prev, newItem]);
-    }
+    if (res.ok) { const newItem = await res.json(); setItems((prev) => [...prev, newItem]); }
     setLoading(false);
     setShowAddModal(false);
   }
@@ -91,137 +87,185 @@ export default function ShoppingPageClient() {
     await fetch("/api/items/basket", { method: "DELETE" });
   }
 
-  const activeCategories: Category[] = ["dry_goods", "meat", "dairy", "vegetables_fruits"];
+  if (!token) return <AuthScreen onAuth={handleAuth} />;
+
   const activeItems = items.filter((i) => i.category !== "payment_basket");
   const basketItems = items.filter((i) => i.category === "payment_basket");
   const totalPrice = basketItems.reduce((sum, i) => sum + (i.price || 0), 0);
 
-  if (showNameScreen) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-2xl">
-          <div className="text-6xl mb-4">🛒</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">קניות הבית</h1>
-          <p className="text-purple-500 mb-6 text-sm">משפחת בן יהודה</p>
-          <input
-            type="text"
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
-            placeholder="מה השם שלך?"
-            autoFocus
-            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-gray-800 text-lg focus:outline-none focus:border-purple-500 mb-4"
-          />
-          <button
-            onClick={handleSaveName}
-            disabled={!nameInput.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-violet-600 text-white py-3 rounded-xl font-bold disabled:opacity-40"
-          >
-            כניסה
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-white" strokeWidth={1.5} />
+            <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md">
+              <ShoppingCart className="w-5 h-5 text-white" strokeWidth={1.5} />
             </div>
             <div>
-              <h1 className="text-white font-bold text-lg leading-none">קניות הבית</h1>
-              <p className="text-purple-200 text-xs">משפחת בן יהודה</p>
+              <h1 className="text-gray-800 font-bold text-base leading-none">קניות הבית</h1>
+              <p className="text-gray-400 text-xs">שלום, {userName}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchItems}
-              className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-            >
-              <RefreshCw className="w-5 h-5" />
+          <div className="flex items-center gap-1">
+            <button onClick={fetchItems} className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
+              <RefreshCw className="w-4 h-4" />
             </button>
-            <div className="bg-white/10 rounded-xl px-3 py-2">
-              <span className="text-purple-200 text-xs">שלום, {userName}</span>
-            </div>
+            <button onClick={handleSignOut} className="p-2 text-gray-400 hover:text-red-500 rounded-xl hover:bg-red-50 transition-all">
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Stats */}
-      <div className="max-w-4xl mx-auto px-4 py-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-2">
-            <span className="text-white/70 text-sm">פריטים ברשימה:</span>
-            <span className="text-white font-bold">{activeItems.length}</span>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-2">
-            <span className="text-white/70 text-sm">בסל תשלום:</span>
-            <span className="text-white font-bold">{basketItems.length}</span>
-          </div>
-          {totalPrice > 0 && (
-            <div className="bg-emerald-500/20 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-2">
-              <span className="text-emerald-200 text-sm">סה&quot;כ:</span>
-              <span className="text-emerald-100 font-bold">₪{totalPrice.toFixed(2)}</span>
+      <main className="max-w-2xl mx-auto px-4 py-5 pb-32 space-y-4">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-2xl p-5 flex flex-col items-center gap-2 shadow-lg shadow-purple-200 hover:scale-105 active:scale-95 transition-transform"
+          >
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <Plus className="w-7 h-7" strokeWidth={2.5} />
             </div>
-          )}
+            <span className="font-bold text-sm">הוסף מוצר</span>
+          </button>
+          <button
+            onClick={() => setShowPasteModal(true)}
+            className="bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-2xl p-5 flex flex-col items-center gap-2 shadow-lg shadow-pink-200 hover:scale-105 active:scale-95 transition-transform"
+          >
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <ClipboardPaste className="w-7 h-7" />
+            </div>
+            <span className="font-bold text-sm">הכנס רשימה</span>
+          </button>
         </div>
-      </div>
 
-      {/* Main content */}
-      <main className="max-w-4xl mx-auto px-4 pb-24 space-y-4">
-        {activeCategories.map((category) => (
-          <CategorySection
-            key={category}
-            category={category}
-            items={activeItems.filter((i) => i.category === category)}
-            onCheck={handleCheckItem}
-            onDelete={handleDeleteItem}
-          />
-        ))}
-
-        {basketItems.length > 0 && (
-          <PaymentBasket
-            items={basketItems}
-            onUpdatePrice={handleUpdatePrice}
-            onUncheck={handleCheckItem}
-            onDelete={handleDeleteItem}
-            onClearAll={handleClearBasket}
-            totalPrice={totalPrice}
-          />
+        {/* Stats */}
+        {items.length > 0 && (
+          <div className="flex gap-2">
+            <div className="bg-white rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm border border-gray-100">
+              <span className="text-gray-500 text-xs">ברשימה:</span>
+              <span className="text-gray-800 font-bold text-sm">{activeItems.length}</span>
+            </div>
+            <div className="bg-white rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm border border-gray-100">
+              <span className="text-gray-500 text-xs">בסל:</span>
+              <span className="text-gray-800 font-bold text-sm">{basketItems.length}</span>
+            </div>
+            {totalPrice > 0 && (
+              <div className="bg-emerald-50 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm border border-emerald-100">
+                <span className="text-emerald-600 font-bold text-sm">₪{totalPrice.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
         )}
 
+        {/* Shopping List */}
+        {activeItems.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50">
+              <h2 className="text-gray-700 font-semibold text-sm">רשימת קניות</h2>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {activeItems.map((item) => {
+                const config = CATEGORY_CONFIG[item.category];
+                const emoji = getProductEmoji(item.name);
+                return (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group">
+                    <button
+                      onClick={() => handleCheckItem(item)}
+                      className="w-9 h-9 rounded-xl border-2 border-gray-200 flex items-center justify-center hover:border-purple-400 hover:bg-purple-50 transition-all flex-shrink-0"
+                    >
+                      <span className="text-lg">{emoji}</span>
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-800 font-medium text-sm truncate">{item.name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${config.bgColor} ${config.color}`}>
+                          {config.icon} {config.label}
+                        </span>
+                        {item.quantity > 1 && <span className="text-xs text-gray-400">×{item.quantity}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleCheckItem(item)}
+                        className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg"
+                        title="העבר לסל"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Payment Basket */}
+        {basketItems.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-emerald-50 flex items-center justify-between">
+              <h2 className="text-emerald-700 font-semibold text-sm">🛒 סל תשלום</h2>
+              <button onClick={handleClearBasket} className="text-xs text-red-400 hover:text-red-600 font-medium">
+                נקה הכל
+              </button>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {basketItems.map((item) => {
+                const emoji = getProductEmoji(item.name);
+                return (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3 group">
+                    <span className="text-xl">{emoji}</span>
+                    <p className="flex-1 text-gray-700 text-sm font-medium line-through opacity-60">{item.name}</p>
+                    <input
+                      type="number"
+                      placeholder="₪"
+                      value={item.price ?? ""}
+                      onChange={(e) => handleUpdatePrice(item.id, e.target.value ? parseFloat(e.target.value) : null)}
+                      className="w-20 px-2 py-1.5 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400 text-center"
+                    />
+                    <button onClick={() => handleCheckItem(item)} className="p-1.5 text-gray-400 hover:text-purple-500 rounded-lg">
+                      ↩
+                    </button>
+                    <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 text-gray-300 hover:text-red-400 rounded-lg">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {totalPrice > 0 && (
+              <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex justify-between items-center">
+                <span className="text-emerald-700 font-semibold text-sm">סה&quot;כ לתשלום</span>
+                <span className="text-emerald-700 font-bold text-lg">₪{totalPrice.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI Suggestions */}
         <AISuggestions items={activeItems} onAdd={handleAddItem} />
 
+        {/* Empty state */}
         {items.length === 0 && (
-          <div className="text-center py-8 animate-fade-in">
+          <div className="text-center py-16">
             <div className="text-6xl mb-4">🛒</div>
-            <h3 className="text-white text-xl font-bold mb-2">הרשימה ריקה</h3>
-            <p className="text-purple-200 text-sm">לחץ על &quot;+&quot; להוספת מוצר ראשון</p>
+            <h3 className="text-gray-500 text-lg font-medium">הרשימה ריקה</h3>
+            <p className="text-gray-400 text-sm mt-1">לחץ &quot;הוסף מוצר&quot; או &quot;הכנס רשימה&quot;</p>
           </div>
         )}
       </main>
 
-      {/* FAB */}
-      <button
-        onClick={() => setShowAddModal(true)}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-2xl shadow-purple-900/50 flex items-center gap-2 font-bold text-base hover:scale-105 active:scale-95 transition-transform z-40"
-      >
-        <Plus className="w-6 h-6" strokeWidth={2.5} />
-        הוסף מוצר
-      </button>
-
-      {showAddModal && (
-        <AddItemModal
-          onAdd={handleAddItem}
-          onClose={() => setShowAddModal(false)}
-          loading={loading}
-        />
-      )}
+      {showAddModal && <AddItemModal onAdd={handleAddItem} onClose={() => setShowAddModal(false)} loading={loading} />}
+      {showPasteModal && <PasteListModal onAdd={handleAddItem} onClose={() => setShowPasteModal(false)} />}
     </div>
   );
 }

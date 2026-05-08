@@ -32,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl">
-      <body className="min-h-screen bg-gradient-to-br from-violet-600 via-purple-700 to-indigo-800">
+      <body className="min-h-screen bg-gray-50">
         <ServiceWorkerRegistrar />
         {children}
       </body>
