@@ -6,7 +6,8 @@
       "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); git --version)",
       "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"e:\\\\APP CULDE CODE\\\\list shop\"; git add .; git commit -m \"החלפת vercel/kv ב-upstash/redis\"; git push)",
       "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"e:\\\\APP CULDE CODE\\\\list shop\"; git add .; git commit -m \"הרשמה/כניסה + הדבק רשימה + עיצוב חדש + תמונות מוצרים\"; git push)",
-      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"e:\\\\APP CULDE CODE\\\\list shop\"; git add .; git commit -m \"כמויות + מי הוסיף + קופה לתשלום + היסטוריית קניות\"; git push)"
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"e:\\\\APP CULDE CODE\\\\list shop\"; git add .; git commit -m \"כמויות + מי הוסיף + קופה לתשלום + היסטוריית קניות\"; git push)",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); cd \"e:\\\\APP CULDE CODE\\\\list shop\"; git add .; git commit -m \"רשימה שטוחה + מצב קנייה עם 4 קטגוריות + תשלום כולל + היסטוריה\"; git push)"
     ]
   }
 }
