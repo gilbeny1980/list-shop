@@ -35,5 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Local Netlify folder
-.netlify
+# Local Netlify folder (keep state.json for CI)
+.netlify/*
+!.netlify/state.json

@@ -3,4 +3,6 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NEXT_TURBOPACK = "0"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
