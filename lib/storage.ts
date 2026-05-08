@@ -1,56 +1,36 @@
 import { ShoppingItem } from "@/types";
 
-// ── In-memory fallback (local dev) ──────────────────────────────
+// ── In-memory fallback (local dev without Redis) ────────────────
 const mem: Record<string, unknown> = {};
 
-// ── Firestore client (production on Firebase App Hosting) ────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _db: any = null;
+type RedisClient = {
+  get: (key: string) => Promise<unknown>;
+  set: (key: string, value: unknown, options?: { ex: number }) => Promise<void>;
+  del: (key: string) => Promise<void>;
+};
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getDb(): any {
-  if (process.env.NEXT_PHASE === "phase-production-build") return null;
-  if (_db) return _db;
-  try {
+function getRedis(): RedisClient | null {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const admin = require("firebase-admin");
-    if (!admin.apps.length) admin.initializeApp();
-    _db = admin.firestore();
-    return _db;
-  } catch {
-    return null;
+    const { Redis } = require("@upstash/redis");
+    return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN }) as RedisClient;
   }
+  return null;
 }
-
-const safeKey = (k: string) => k.replace(/[/:]/g, "__");
 
 async function kvGet<T>(key: string): Promise<T | null> {
-  const db = getDb();
-  if (db) {
-    const snap = await db.collection("kv").doc(safeKey(key)).get();
-    if (!snap.exists) return null;
-    const d = snap.data()!;
-    if (d.expiresAt && d.expiresAt.toMillis() < Date.now()) return null;
-    return d.value as T;
-  }
-  return (mem[key] as T) ?? null;
+  const r = getRedis();
+  return r ? (await r.get(key)) as T | null : (mem[key] as T) ?? null;
 }
-
 async function kvSet(key: string, value: unknown, ex?: number): Promise<void> {
-  const db = getDb();
-  if (db) {
-    const doc: Record<string, unknown> = { value, updatedAt: new Date() };
-    if (ex) doc.expiresAt = new Date(Date.now() + ex * 1000);
-    await db.collection("kv").doc(safeKey(key)).set(doc);
-    return;
-  }
-  mem[key] = value;
+  const r = getRedis();
+  if (r) await r.set(key, value, ex ? { ex } : undefined);
+  else mem[key] = value;
 }
-
 async function kvDel(key: string): Promise<void> {
-  const db = getDb();
-  if (db) { await db.collection("kv").doc(safeKey(key)).delete(); return; }
-  delete mem[key];
+  const r = getRedis();
+  if (r) await r.del(key);
+  else delete mem[key];
 }
 
 // ── Items (per group) ───────────────────────────────────────────
