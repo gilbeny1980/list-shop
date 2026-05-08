@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Copy-Item \"e:\\\\APP CULDE CODE\\\\list shop\\\\middleware.ts\" \"e:\\\\APP CULDE CODE\\\\list shop\\\\proxy.ts\")",
+      "PowerShell(cmd /c \"dir \"\"e:\\\\APP CULDE CODE\\\\list shop\"\" /b /a-d\")",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); git --version)"
+    ]
+  }
+}
