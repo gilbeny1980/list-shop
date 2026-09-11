@@ -1,0 +1,26 @@
+{
+  "name": "בדרך הביתה",
+  "short_name": "בדרך הביתה",
+  "description": "מעקב יציאות לבני נוער - ההורים יודעים מתי יוצאים ומתי חוזרים",
+  "start_url": "/baderech",
+  "display": "standalone",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/baderech-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/baderech-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

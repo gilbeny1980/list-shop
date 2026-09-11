@@ -1,5 +1,5 @@
 const CACHE_NAME = 'kniyor-habayit-v1';
-const STATIC_ASSETS = ['/', '/login', '/shopping'];
+const STATIC_ASSETS = ['/', '/login', '/shopping', '/baderech'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
