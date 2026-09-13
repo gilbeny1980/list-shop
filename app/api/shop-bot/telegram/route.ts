@@ -40,6 +40,15 @@ function isAdmin(chatId: number): boolean {
   return allowed.includes(String(chatId));
 }
 
+// Read-only diagnostic: confirms whether products are actually persisting
+// (Redis) vs. resetting between requests (in-memory fallback). Product
+// name/price aren't sensitive — this is the same data customers see.
+export async function GET() {
+  const products = await getProducts();
+  const usingRedis = Boolean(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
+  return NextResponse.json({ usingRedis, count: products.length, products });
+}
+
 export async function POST(req: NextRequest) {
   const botToken = process.env.TELEGRAM_ADMIN_BOT_TOKEN;
   if (!botToken) return NextResponse.json({ status: "ok" });
