@@ -20,7 +20,7 @@ export async function getProduct(id: string): Promise<BotProduct | null> {
 export async function addProduct(data: {
   name: string;
   price: number;
-  telegramFileId: string;
+  telegramFileId: string | null;
 }): Promise<BotProduct> {
   const products = await getProducts();
   const product: BotProduct = {

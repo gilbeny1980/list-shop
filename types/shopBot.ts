@@ -2,7 +2,7 @@ export interface BotProduct {
   id: string;
   name: string;
   price: number;
-  telegramFileId: string;
+  telegramFileId: string | null;
   active: boolean;
   createdAt: string;
 }

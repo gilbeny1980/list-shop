@@ -130,7 +130,7 @@ async function handleProductSelected(phone, productId) {
 
   const adminBotToken = process.env.TELEGRAM_ADMIN_BOT_TOKEN;
   let imageSent = false;
-  if (adminBotToken) {
+  if (adminBotToken && product.telegramFileId) {
     try {
       const buffer = await downloadTelegramFile(adminBotToken, product.telegramFileId);
       await sock.sendMessage(`${phone}@s.whatsapp.net`, {
