@@ -9,10 +9,14 @@ type RedisClient = {
 };
 
 function getRedis(): RedisClient | null {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  // Vercel's own Marketplace "KV" storage (Upstash-backed) injects
+  // KV_REST_API_URL/TOKEN instead of the plain Upstash names.
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  if (url && token) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Redis } = require("@upstash/redis");
-    return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN }) as RedisClient;
+    return new Redis({ url, token }) as RedisClient;
   }
   return null;
 }
