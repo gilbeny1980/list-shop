@@ -28,7 +28,8 @@ const HELP_TEXT =
   "/addproduct - הוספת מוצר חדש\n" +
   "/listproducts - רשימת המוצרים\n" +
   "/removeproduct <מזהה> - הסרת מוצר מהתפריט\n" +
-  "/cancel - ביטול הפעולה הנוכחית";
+  "/cancel - ביטול הפעולה הנוכחית\n\n" +
+  "(בשלב הוספת תמונה אפשר לשלוח /skip כדי להוסיף מוצר בלי תמונה)";
 
 function isAdmin(chatId: number): boolean {
   const allowed = (process.env.TELEGRAM_ADMIN_CHAT_IDS || "")
@@ -75,9 +76,7 @@ async function sendCustomerMenu(botToken: string, chatId: number, isStart: boole
     return;
   }
 
-  const greeting = isStart
-    ? "🍰 ברוכים הבאים להזמנות מירב מלך! 🍰\n\nמאפים ומתוקים ביתיים, טריים ואיכותיים.\nלפניכם התפריט הזמין להזמנה:"
-    : "מה תרצו להזמין?";
+  const greeting = isStart ? "🍰 הזמנות עוגות מירב מלך 🍰" : "מה תרצו להזמין?";
   const keyboard: TelegramInlineKeyboard = {
     inline_keyboard: products.map((p) => [{ text: `${p.name} - ${p.price} ₪`, callback_data: `product:${p.id}` }]),
   };
@@ -92,7 +91,7 @@ async function handleProductSelected(botToken: string, chatId: number, productId
     return;
   }
 
-  await sendTelegramPhoto(botToken, chatId, product.telegramFileId, `${product.name} - ${product.price} ₪`, {
+  const paymentKeyboard: TelegramInlineKeyboard = {
     inline_keyboard: [
       [
         { text: "ביט 💳", callback_data: `pay_bit:${product.id}` },
@@ -100,7 +99,19 @@ async function handleProductSelected(botToken: string, chatId: number, productId
       ],
       [{ text: "ביטול", callback_data: "cancel_order" }],
     ],
-  });
+  };
+
+  if (product.telegramFileId) {
+    await sendTelegramPhoto(
+      botToken,
+      chatId,
+      product.telegramFileId,
+      `${product.name} - ${product.price} ₪`,
+      paymentKeyboard
+    );
+  } else {
+    await sendTelegramMessage(botToken, chatId, `${product.name} - ${product.price} ₪`, paymentKeyboard);
+  }
   await setTgSession(String(chatId), { productId: product.id });
 }
 
@@ -242,14 +253,24 @@ async function handleAdminMessage(botToken: string, chatId: number, message: Tel
       return;
     }
     await setAdminSession(chatKey, { ...session, state: "awaiting_photo", price });
-    await sendTelegramMessage(botToken, chatId, "מעולה! עכשיו שלחי תמונה של המוצר 📷");
+    await sendTelegramMessage(
+      botToken,
+      chatId,
+      "מעולה! עכשיו שלחי תמונה של המוצר 📷 (או שלחי /skip כדי להוסיף בלי תמונה בינתיים)"
+    );
     return;
   }
 
   if (session.state === "awaiting_photo") {
     const photos = message.photo;
     if (!photos || photos.length === 0) {
-      await sendTelegramMessage(botToken, chatId, "נא לשלוח תמונה של המוצר (לא כקובץ).");
+      if (text === "/skip") {
+        const product = await addProduct({ name: session.name!, price: session.price!, telegramFileId: null });
+        await clearAdminSession(chatKey);
+        await sendTelegramMessage(botToken, chatId, `המוצר "${product.name}" (${product.price} ₪) נוסף בהצלחה! ✅`);
+        return;
+      }
+      await sendTelegramMessage(botToken, chatId, "נא לשלוח תמונה של המוצר (לא כקובץ), או /skip כדי לדלג.");
       return;
     }
     const fileId = photos[photos.length - 1].file_id;

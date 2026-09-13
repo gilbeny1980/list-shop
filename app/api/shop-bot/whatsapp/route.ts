@@ -59,9 +59,11 @@ async function handleProductSelected(from: string, productId: string) {
   }
 
   const adminBotToken = process.env.TELEGRAM_ADMIN_BOT_TOKEN;
-  if (adminBotToken) {
+  if (adminBotToken && product.telegramFileId) {
     const imageUrl = await getTelegramFileUrl(adminBotToken, product.telegramFileId);
     await sendWhatsappImage(from, imageUrl, `${product.name} - ${product.price} ₪`);
+  } else {
+    await sendWhatsappText(from, `${product.name} - ${product.price} ₪`);
   }
 
   await sendWhatsappButtons(from, "איך תרצו לשלם?", [
