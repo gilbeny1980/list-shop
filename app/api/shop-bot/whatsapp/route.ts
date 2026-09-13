@@ -87,7 +87,8 @@ async function handlePaymentSelected(from: string, paymentMethod: PaymentMethod)
     productName: product.name,
     price: product.price,
     paymentMethod,
-    customerPhone: from,
+    channel: "whatsapp",
+    customerId: from,
   });
   await clearWaSession(from);
 

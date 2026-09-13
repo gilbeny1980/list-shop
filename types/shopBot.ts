@@ -8,6 +8,7 @@ export interface BotProduct {
 }
 
 export type PaymentMethod = "bit" | "cash";
+export type OrderChannel = "whatsapp" | "telegram";
 
 export interface BotOrder {
   id: string;
@@ -15,14 +16,16 @@ export interface BotOrder {
   productName: string;
   price: number;
   paymentMethod: PaymentMethod;
-  customerPhone: string;
+  channel: OrderChannel;
+  customerId: string; // WhatsApp phone number, or Telegram chat id
+  customerName?: string;
   createdAt: string;
 }
 
-// WhatsApp customer conversation state, keyed by phone number.
-// A `productId` means the customer picked a product and we're waiting for
-// their payment choice.
-export interface WaSession {
+// Customer ordering conversation state (WhatsApp phone number or Telegram
+// chat id as the key). A `productId` means the customer picked a product
+// and we're waiting for their payment choice.
+export interface CustomerSession {
   productId?: string;
 }
 
@@ -48,9 +51,32 @@ export interface TelegramMessage {
   photo?: TelegramPhotoSize[];
 }
 
+export interface TelegramUser {
+  id: number;
+  first_name: string;
+  username?: string;
+}
+
+export interface TelegramCallbackQuery {
+  id: string;
+  data?: string;
+  from: TelegramUser;
+  message?: { chat: { id: number } };
+}
+
 export interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+  callback_query?: TelegramCallbackQuery;
+}
+
+export interface TelegramInlineButton {
+  text: string;
+  callback_data: string;
+}
+
+export interface TelegramInlineKeyboard {
+  inline_keyboard: TelegramInlineButton[][];
 }
 
 export interface WhatsAppInteractiveReply {
