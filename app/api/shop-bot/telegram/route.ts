@@ -76,7 +76,7 @@ async function sendCustomerMenu(botToken: string, chatId: number, isStart: boole
   }
 
   const greeting = isStart
-    ? "ברוכים הבאים למתוקים של מירב מלך! 🍰\nלפניכם אפשרות להזמנה:"
+    ? "🍰 ברוכים הבאים להזמנות מירב מלך! 🍰\n\nמאפים ומתוקים ביתיים, טריים ואיכותיים.\nלפניכם התפריט הזמין להזמנה:"
     : "מה תרצו להזמין?";
   const keyboard: TelegramInlineKeyboard = {
     inline_keyboard: products.map((p) => [{ text: `${p.name} - ${p.price} ₪`, callback_data: `product:${p.id}` }]),
