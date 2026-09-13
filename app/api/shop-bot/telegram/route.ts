@@ -107,7 +107,10 @@ async function handleProductSelected(botToken: string, chatId: number, productId
         { text: "ביט 💳", callback_data: `pay_bit:${product.id}` },
         { text: "מזומן 💵", callback_data: `pay_cash:${product.id}` },
       ],
-      [{ text: "ביטול", callback_data: "cancel_order" }],
+      [
+        { text: "ביטול", callback_data: "cancel_order" },
+        { text: "🏠 תפריט ראשי", callback_data: "main_menu" },
+      ],
     ],
   };
 
@@ -154,7 +157,9 @@ async function handlePaymentSelected(
     paymentMethod === "bit"
       ? `לתשלום בביט: ${process.env.MERAV_BIT_INFO || "נא לתאם עם מירב"}`
       : "התשלום יתבצע במזומן באיסוף / במשלוח";
-  await sendTelegramMessage(botToken, chatId, `תודה! ההזמנה שלך (${product.name}) התקבלה ✅\n${paymentText}`);
+  await sendTelegramMessage(botToken, chatId, `תודה! ההזמנה שלך (${product.name}) התקבלה ✅\n${paymentText}`, {
+    inline_keyboard: [[{ text: "🏠 תפריט ראשי", callback_data: "main_menu" }]],
+  });
 
   const ordersBotToken = process.env.TELEGRAM_ORDERS_BOT_TOKEN;
   const ordersChatId = process.env.TELEGRAM_ORDERS_CHAT_ID;
@@ -192,7 +197,14 @@ async function handleCallback(botToken: string, callback: TelegramCallbackQuery)
 
   if (data === "cancel_order") {
     await clearTgSession(String(chatId));
-    await sendTelegramMessage(botToken, chatId, "ההזמנה בוטלה. אפשר להתחיל הזמנה חדשה בכל עת 🙂");
+    await sendTelegramMessage(botToken, chatId, "ההזמנה בוטלה.");
+    await sendCustomerMenu(botToken, chatId, false);
+    return;
+  }
+
+  if (data === "main_menu") {
+    await clearTgSession(String(chatId));
+    await sendCustomerMenu(botToken, chatId, false);
   }
 }
 
