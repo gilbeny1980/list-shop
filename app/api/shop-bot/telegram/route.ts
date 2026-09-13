@@ -28,7 +28,8 @@ const HELP_TEXT =
   "/addproduct - הוספת מוצר חדש\n" +
   "/listproducts - רשימת המוצרים\n" +
   "/removeproduct <מזהה> - הסרת מוצר מהתפריט\n" +
-  "/cancel - ביטול הפעולה הנוכחית\n\n" +
+  "/menu - הצגת התפריט בדיוק כמו שהלקוחות רואים אותו (עם הכפתורים)\n" +
+  "/cancel - ביטול הפעולה הנוכחית וחזרה לתפריט הפקודות\n\n" +
   "(בשלב הוספת תמונה אפשר לשלוח /skip כדי להוסיף מוצר בלי תמונה)";
 
 function isAdmin(chatId: number): boolean {
@@ -192,13 +193,22 @@ async function handleAdminMessage(botToken: string, chatId: number, message: Tel
   const chatKey = String(chatId);
 
   if (text === "/start" || text === "/help") {
+    await clearAdminSession(chatKey);
     await sendTelegramMessage(botToken, chatId, HELP_TEXT);
     return;
   }
 
   if (text === "/cancel") {
     await clearAdminSession(chatKey);
-    await sendTelegramMessage(botToken, chatId, "הפעולה בוטלה.");
+    await sendTelegramMessage(botToken, chatId, "הפעולה בוטלה. שלחי /help לרשימת הפקודות.");
+    return;
+  }
+
+  // Lets the admin see exactly what customers see (including the real
+  // buttons) from the same account, without needing a second Telegram user.
+  if (text === "/menu") {
+    await clearAdminSession(chatKey);
+    await sendCustomerMenu(botToken, chatId, true);
     return;
   }
 
